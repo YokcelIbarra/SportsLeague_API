@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SportsLeague.DataAccess.Context;
 
@@ -11,9 +12,11 @@ using SportsLeague.DataAccess.Context;
 namespace SportsLeague.DataAccess.Migrations
 {
     [DbContext(typeof(LeagueDbContext))]
-    partial class LeagueDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260413023611_AddSponsor")]
+    partial class AddSponsor
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -225,36 +228,6 @@ namespace SportsLeague.DataAccess.Migrations
                     b.ToTable("Tournaments");
                 });
 
-            modelBuilder.Entity("SportsLeague.Domain.Entities.TournamentSponsor", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<decimal>("ContractAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime>("JoinedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("SponsorId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TournamentId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SponsorId");
-
-                    b.HasIndex("TournamentId", "SponsorId")
-                        .IsUnique();
-
-                    b.ToTable("TournamentSponsors");
-                });
-
             modelBuilder.Entity("SportsLeague.Domain.Entities.TournamentTeam", b =>
                 {
                     b.Property<int>("Id")
@@ -299,25 +272,6 @@ namespace SportsLeague.DataAccess.Migrations
                     b.Navigation("Team");
                 });
 
-            modelBuilder.Entity("SportsLeague.Domain.Entities.TournamentSponsor", b =>
-                {
-                    b.HasOne("SportsLeague.Domain.Entities.Sponsor", "Sponsor")
-                        .WithMany()
-                        .HasForeignKey("SponsorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("SportsLeague.Domain.Entities.Tournament", "Tournament")
-                        .WithMany("TournamentSponsors")
-                        .HasForeignKey("TournamentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Sponsor");
-
-                    b.Navigation("Tournament");
-                });
-
             modelBuilder.Entity("SportsLeague.Domain.Entities.TournamentTeam", b =>
                 {
                     b.HasOne("SportsLeague.Domain.Entities.Team", "Team")
@@ -346,8 +300,6 @@ namespace SportsLeague.DataAccess.Migrations
 
             modelBuilder.Entity("SportsLeague.Domain.Entities.Tournament", b =>
                 {
-                    b.Navigation("TournamentSponsors");
-
                     b.Navigation("TournamentTeams");
                 });
 #pragma warning restore 612, 618
