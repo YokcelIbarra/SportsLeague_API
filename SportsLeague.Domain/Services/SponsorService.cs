@@ -1,6 +1,7 @@
 using SportsLeague.Domain.Entities;
 using SportsLeague.Domain.Interfaces.Repositories;
 using SportsLeague.Domain.Interfaces.Services;
+using System.Net.Mail;
 
 namespace SportsLeague.Domain.Services
 {
@@ -32,10 +33,13 @@ namespace SportsLeague.Domain.Services
 
         public async Task<Sponsor> CreateAsync(Sponsor sponsor)
         {
+            ValidateContactEmail(sponsor.ContactEmail);
+
             if (await _repository.ExistsByNameAsync(sponsor.Name))
                 throw new InvalidOperationException("Ya existe un sponsor con ese nombre");
 
             sponsor.CreatedAt = DateTime.UtcNow;
+            sponsor.UpdatedAt = null;
 
             return await _repository.CreateAsync(sponsor);
         }
@@ -46,6 +50,11 @@ namespace SportsLeague.Domain.Services
 
             if (existing == null)
                 throw new KeyNotFoundException("Sponsor no encontrado");
+
+            ValidateContactEmail(sponsor.ContactEmail);
+
+            if (await _repository.ExistsByNameAsync(sponsor.Name, id))
+                throw new InvalidOperationException("Ya existe un sponsor con ese nombre");
 
             existing.Name = sponsor.Name;
             existing.ContactEmail = sponsor.ContactEmail;
@@ -67,7 +76,6 @@ namespace SportsLeague.Domain.Services
             await _repository.DeleteAsync(existing);
         }
 
-        // 🔥 LINK
         public async Task<TournamentSponsor> LinkTournamentAsync(int sponsorId, int tournamentId, decimal contractAmount)
         {
             var sponsor = await _repository.GetByIdAsync(sponsorId);
@@ -81,37 +89,65 @@ namespace SportsLeague.Domain.Services
             if (contractAmount <= 0)
                 throw new InvalidOperationException("ContractAmount debe ser mayor a 0");
 
-            var exists = await _tournamentSponsorRepository.GetBySponsorAndTournamentAsync(sponsorId, tournamentId);
-            if (exists != null)
-                throw new InvalidOperationException("Ya está vinculado");
+            var exists = await _tournamentSponsorRepository.ExistsAsync(sponsorId, tournamentId);
+            if (exists)
+                throw new InvalidOperationException("Ya esta vinculado");
 
-            var ts = new TournamentSponsor
+            var tournamentSponsor = new TournamentSponsor
             {
                 SponsorId = sponsorId,
                 TournamentId = tournamentId,
                 ContractAmount = contractAmount,
-                JoinedAt = DateTime.UtcNow
+                JoinedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = null
             };
 
-            return await _tournamentSponsorRepository.CreateAsync(ts);
+            return await _tournamentSponsorRepository.CreateAsync(tournamentSponsor);
         }
 
-        // 🔥 GET TORNEOS
         public async Task<IEnumerable<TournamentSponsor>> GetTournamentsBySponsorAsync(int sponsorId)
         {
+            var sponsor = await _repository.GetByIdAsync(sponsorId);
+
+            if (sponsor == null)
+                throw new KeyNotFoundException("Sponsor no encontrado");
+
             return await _tournamentSponsorRepository.GetBySponsorIdAsync(sponsorId);
         }
 
-        // 🔥 UNLINK
         public async Task UnlinkTournamentAsync(int sponsorId, int tournamentId)
         {
-            var ts = await _tournamentSponsorRepository
+            var sponsor = await _repository.GetByIdAsync(sponsorId);
+            if (sponsor == null)
+                throw new KeyNotFoundException("Sponsor no encontrado");
+
+            var tournament = await _tournamentRepository.GetByIdAsync(tournamentId);
+            if (tournament == null)
+                throw new KeyNotFoundException("Tournament no encontrado");
+
+            var tournamentSponsor = await _tournamentSponsorRepository
                 .GetBySponsorAndTournamentAsync(sponsorId, tournamentId);
 
-            if (ts == null)
-                throw new KeyNotFoundException("No existe vínculo");
+            if (tournamentSponsor == null)
+                throw new KeyNotFoundException("No existe vinculo");
 
-            await _tournamentSponsorRepository.DeleteAsync(ts);
+            await _tournamentSponsorRepository.DeleteAsync(tournamentSponsor);
+        }
+
+        private static void ValidateContactEmail(string contactEmail)
+        {
+            try
+            {
+                var email = new MailAddress(contactEmail);
+
+                if (email.Address != contactEmail)
+                    throw new InvalidOperationException("ContactEmail no tiene un formato valido");
+            }
+            catch (FormatException)
+            {
+                throw new InvalidOperationException("ContactEmail no tiene un formato valido");
+            }
         }
     }
 }

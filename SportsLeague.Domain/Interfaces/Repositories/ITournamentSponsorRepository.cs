@@ -2,10 +2,11 @@ using SportsLeague.Domain.Entities;
 
 namespace SportsLeague.Domain.Interfaces.Repositories
 {
-    public interface ITournamentSponsorRepository
+    public interface ITournamentSponsorRepository : IGenericRepository<TournamentSponsor>
     {
-        Task<TournamentSponsor> CreateAsync(TournamentSponsor tournamentSponsor);
         Task<IEnumerable<TournamentSponsor>> GetBySponsorIdAsync(int sponsorId);
+        Task<IEnumerable<TournamentSponsor>> GetByTournamentIdAsync(int tournamentId);
+        Task<bool> ExistsAsync(int sponsorId, int tournamentId);
         Task<TournamentSponsor?> GetBySponsorAndTournamentAsync(int sponsorId, int tournamentId);
         Task DeleteAsync(TournamentSponsor tournamentSponsor);
     }

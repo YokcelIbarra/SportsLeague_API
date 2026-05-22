@@ -5,47 +5,26 @@ using SportsLeague.Domain.Interfaces.Repositories;
 
 namespace SportsLeague.DataAccess.Repositories
 {
-    public class SponsorRepository : ISponsorRepository
+    public class SponsorRepository : GenericRepository<Sponsor>, ISponsorRepository
     {
-        private readonly LeagueDbContext _context;
-
-        public SponsorRepository(LeagueDbContext context)
+        public SponsorRepository(LeagueDbContext context) : base(context)
         {
-            _context = context;
-        }
-
-        public async Task<IEnumerable<Sponsor>> GetAllAsync()
-        {
-            return await _context.Sponsors.ToListAsync();
-        }
-
-        public async Task<Sponsor?> GetByIdAsync(int id)
-        {
-            return await _context.Sponsors.FindAsync(id);
-        }
-
-        public async Task<Sponsor> CreateAsync(Sponsor sponsor)
-        {
-            await _context.Sponsors.AddAsync(sponsor);
-            await _context.SaveChangesAsync();
-            return sponsor;
-        }
-
-        public async Task UpdateAsync(Sponsor sponsor)
-        {
-            _context.Sponsors.Update(sponsor);
-            await _context.SaveChangesAsync();
         }
 
         public async Task DeleteAsync(Sponsor sponsor)
         {
-            _context.Sponsors.Remove(sponsor);
+            _dbSet.Remove(sponsor);
             await _context.SaveChangesAsync();
         }
 
         public async Task<bool> ExistsByNameAsync(string name)
         {
-            return await _context.Sponsors.AnyAsync(s => s.Name == name);
+            return await _dbSet.AnyAsync(s => s.Name == name);
+        }
+
+        public async Task<bool> ExistsByNameAsync(string name, int excludeId)
+        {
+            return await _dbSet.AnyAsync(s => s.Name == name && s.Id != excludeId);
         }
     }
 }

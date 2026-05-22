@@ -1,7 +1,4 @@
 using AutoMapper;
-using SportsLeague.API.DTOs.Request;
-using SportsLeague.API.DTOs.Response;
-using SportsLeague.Domain.Entities;
 
 namespace SportsLeague.API.Mappings
 {
@@ -9,11 +6,6 @@ namespace SportsLeague.API.Mappings
     {
         public SponsorProfile()
         {
-            // Request → Entity
-            CreateMap<SponsorRequestDTO, Sponsor>();
-
-            // Entity → Response
-            CreateMap<Sponsor, SponsorResponseDTO>();
         }
     }
 }

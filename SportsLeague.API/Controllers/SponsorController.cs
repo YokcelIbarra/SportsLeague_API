@@ -91,12 +91,13 @@ namespace SportsLeague.API.Controllers
         }
 
         [HttpGet("{id}/tournaments")]
-        public async Task<IActionResult> GetTournamentsBySponsor(int id)
+        public async Task<ActionResult<IEnumerable<TournamentSponsorResponseDTO>>> GetTournamentsBySponsor(int id)
         {
             try
             {
-                var result = await _service.GetTournamentsBySponsorAsync(id);
-                return Ok(result);
+                var tournamentSponsors = await _service.GetTournamentsBySponsorAsync(id);
+                var response = _mapper.Map<IEnumerable<TournamentSponsorResponseDTO>>(tournamentSponsors);
+                return Ok(response);
             }
             catch (KeyNotFoundException ex)
             {
@@ -105,12 +106,14 @@ namespace SportsLeague.API.Controllers
         }
 
         [HttpPost("{id}/tournaments")]
-        public async Task<IActionResult> LinkTournament(int id, [FromBody] TournamentSponsorRequestDTO request)
+        public async Task<ActionResult<TournamentSponsorResponseDTO>> LinkTournament(int id, [FromBody] TournamentSponsorRequestDTO request)
         {
             try
             {
-                var result = await _service.LinkTournamentAsync(id, request.TournamentId, request.ContractAmount);
-                return CreatedAtAction(nameof(GetTournamentsBySponsor), new { id }, result);
+                var tournamentSponsor = await _service.LinkTournamentAsync(id, request.TournamentId, request.ContractAmount);
+                var response = _mapper.Map<TournamentSponsorResponseDTO>(tournamentSponsor);
+
+                return CreatedAtAction(nameof(GetTournamentsBySponsor), new { id }, response);
             }
             catch (KeyNotFoundException ex)
             {

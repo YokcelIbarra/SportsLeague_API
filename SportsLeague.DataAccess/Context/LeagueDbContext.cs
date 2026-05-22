@@ -15,7 +15,7 @@ namespace SportsLeague.DataAccess.Context
         public DbSet<Tournament> Tournaments => Set<Tournament>();
         public DbSet<Referee> Referees => Set<Referee>();
         public DbSet<TournamentTeam> TournamentTeams => Set<TournamentTeam>();
-        public DbSet<SportsLeague.Domain.Entities.Sponsor> Sponsors => Set<SportsLeague.Domain.Entities.Sponsor>();
+        public DbSet<Sponsor> Sponsors => Set<Sponsor>();
         public DbSet<TournamentSponsor> TournamentSponsors => Set<TournamentSponsor>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -151,6 +151,10 @@ namespace SportsLeague.DataAccess.Context
 
                 entity.Property(ts => ts.JoinedAt)
                       .IsRequired();
+                entity.Property(ts => ts.CreatedAt)
+                      .IsRequired();
+                entity.Property(ts => ts.UpdatedAt)
+                      .IsRequired(false);
 
                 entity.HasOne(ts => ts.Tournament)
                       .WithMany(t => t.TournamentSponsors)
@@ -158,7 +162,7 @@ namespace SportsLeague.DataAccess.Context
                       .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasOne(ts => ts.Sponsor)
-                      .WithMany()
+                      .WithMany(s => s.TournamentSponsors)
                       .HasForeignKey(ts => ts.SponsorId)
                       .OnDelete(DeleteBehavior.Cascade);
 
@@ -167,7 +171,7 @@ namespace SportsLeague.DataAccess.Context
             });
 
             // ── Sponsor Configuration ──
-            modelBuilder.Entity<SportsLeague.Domain.Entities.Sponsor>(entity =>
+            modelBuilder.Entity<Sponsor>(entity =>
             {
                 entity.HasKey(s => s.Id);
 
