@@ -1,0 +1,156 @@
+using Microsoft.Extensions.Logging;
+using SportsLeague.Domain.Entities;
+using SportsLeague.Domain.Enums;
+using SportsLeague.Domain.Interfaces.Repositories;
+using SportsLeague.Domain.Interfaces.Services;
+
+namespace SportsLeague.Domain.Services
+{
+    public class MatchService : IMatchService
+    {
+        private readonly IMatchRepository _matchRepository;
+        private readonly ITournamentRepository _tournamentRepository;
+        private readonly ITeamRepository _teamRepository;
+        private readonly IRefereeRepository _refereeRepository;
+        private readonly ILogger<MatchService> _logger;
+
+        public MatchService(
+            IMatchRepository matchRepository,
+            ITournamentRepository tournamentRepository,
+            ITeamRepository teamRepository,
+            IRefereeRepository refereeRepository,
+            ILogger<MatchService> logger)
+        {
+            _matchRepository = matchRepository;
+            _tournamentRepository = tournamentRepository;
+            _teamRepository = teamRepository;
+            _refereeRepository = refereeRepository;
+            _logger = logger;
+        }
+
+        public async Task<IEnumerable<Match>> GetAllAsync()
+        {
+            _logger.LogInformation("Retrieving all matches");
+            return await _matchRepository.GetAllWithDetailsAsync();
+        }
+
+        public async Task<Match?> GetByIdAsync(int id)
+        {
+            _logger.LogInformation("Retrieving match with ID: {MatchId}", id);
+            var match = await _matchRepository.GetByIdWithDetailsAsync(id);
+
+            if (match == null)
+                _logger.LogWarning("Match with ID {MatchId} not found", id);
+
+            return match;
+        }
+
+        public async Task<IEnumerable<Match>> GetByTournamentAsync(int tournamentId)
+        {
+            var tournamentExists = await _tournamentRepository.ExistsAsync(tournamentId);
+
+            if (!tournamentExists)
+                throw new KeyNotFoundException($"No se encontró el torneo con ID {tournamentId}");
+
+            return await _matchRepository.GetByTournamentAsync(tournamentId);
+        }
+
+        public async Task<Match> CreateAsync(Match match)
+        {
+            await ValidateMatchRelationsAsync(match);
+
+            match.Status = MatchStatus.Scheduled;
+
+            _logger.LogInformation(
+                "Creating match for tournament {TournamentId}: {HomeTeamId} vs {AwayTeamId}",
+                match.TournamentId, match.HomeTeamId, match.AwayTeamId);
+
+            return await _matchRepository.CreateAsync(match);
+        }
+
+        public async Task UpdateAsync(int id, Match match)
+        {
+            var existing = await _matchRepository.GetByIdAsync(id);
+
+            if (existing == null)
+                throw new KeyNotFoundException($"No se encontró el partido con ID {id}");
+
+            if (existing.Status != MatchStatus.Scheduled)
+                throw new InvalidOperationException("Solo se pueden editar partidos en estado Scheduled");
+
+            await ValidateMatchRelationsAsync(match);
+
+            existing.TournamentId = match.TournamentId;
+            existing.HomeTeamId = match.HomeTeamId;
+            existing.AwayTeamId = match.AwayTeamId;
+            existing.RefereeId = match.RefereeId;
+            existing.MatchDate = match.MatchDate;
+
+            _logger.LogInformation("Updating match with ID: {MatchId}", id);
+            await _matchRepository.UpdateAsync(existing);
+        }
+
+        public async Task DeleteAsync(int id)
+        {
+            var existing = await _matchRepository.GetByIdAsync(id);
+
+            if (existing == null)
+                throw new KeyNotFoundException($"No se encontró el partido con ID {id}");
+
+            if (existing.Status != MatchStatus.Scheduled)
+                throw new InvalidOperationException("Solo se pueden eliminar partidos en estado Scheduled");
+
+            _logger.LogInformation("Deleting match with ID: {MatchId}", id);
+            await _matchRepository.DeleteAsync(id);
+        }
+
+        public async Task UpdateStatusAsync(int id, MatchStatus newStatus)
+        {
+            var match = await _matchRepository.GetByIdAsync(id);
+
+            if (match == null)
+                throw new KeyNotFoundException($"No se encontró el partido con ID {id}");
+
+            var validTransition = (match.Status, newStatus) switch
+            {
+                (MatchStatus.Scheduled, MatchStatus.InProgress) => true,
+                (MatchStatus.InProgress, MatchStatus.Finished) => true,
+                (MatchStatus.Scheduled, MatchStatus.Cancelled) => true,
+                _ => false
+            };
+
+            if (!validTransition)
+                throw new InvalidOperationException($"No se puede cambiar de {match.Status} a {newStatus}");
+
+            match.Status = newStatus;
+
+            _logger.LogInformation(
+                "Updating match {MatchId} status to {NewStatus}",
+                id, newStatus);
+
+            await _matchRepository.UpdateAsync(match);
+        }
+
+        private async Task ValidateMatchRelationsAsync(Match match)
+        {
+            if (match.HomeTeamId == match.AwayTeamId)
+                throw new InvalidOperationException("HomeTeamId y AwayTeamId no pueden ser iguales");
+
+            var tournamentExists = await _tournamentRepository.ExistsAsync(match.TournamentId);
+            if (!tournamentExists)
+                throw new KeyNotFoundException($"No se encontró el torneo con ID {match.TournamentId}");
+
+            var homeTeamExists = await _teamRepository.ExistsAsync(match.HomeTeamId);
+            if (!homeTeamExists)
+                throw new KeyNotFoundException($"No se encontró el equipo local con ID {match.HomeTeamId}");
+
+            var awayTeamExists = await _teamRepository.ExistsAsync(match.AwayTeamId);
+            if (!awayTeamExists)
+                throw new KeyNotFoundException($"No se encontró el equipo visitante con ID {match.AwayTeamId}");
+
+            var refereeExists = await _refereeRepository.ExistsAsync(match.RefereeId);
+            if (!refereeExists)
+                throw new KeyNotFoundException($"No se encontró el árbitro con ID {match.RefereeId}");
+        }
+    }
+}
